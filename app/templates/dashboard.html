@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="refresh" content="15">
+  <title>Remediation Controller</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; color: #1a1a2e; }
+    h1 { margin-bottom: 0.25rem; }
+    .subtitle { color: #666; margin-bottom: 1.5rem; }
+    .cards { display: flex; gap: 1rem; margin-bottom: 1.5rem; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 0.75rem 1.5rem; text-align: center; }
+    .card .num { font-size: 1.8rem; font-weight: 700; }
+    .card.failed .num { color: #c0392b; }
+    .card.active .num { color: #2980b9; }
+    .card.completed .num { color: #27ae60; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+    th { background: #f6f6f9; }
+    .status { padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.8rem; }
+    .status.failed { background: #fdecea; color: #c0392b; }
+    .status.completed { background: #eafaf1; color: #27ae60; }
+    .status.running, .status.session_created, .status.pending { background: #eaf2fd; color: #2980b9; }
+    .error { color: #c0392b; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <h1>Remediation Controller</h1>
+  <p class="subtitle">Issues labeled for remediation &rarr; Devin sessions &rarr; pull requests. Auto-refreshes every 15s.</p>
+
+  <div class="cards">
+    <div class="card"><div class="num">{{ stats.total }}</div>runs</div>
+    <div class="card active"><div class="num">{{ stats.active }}</div>active</div>
+    <div class="card completed"><div class="num">{{ stats.completed }}</div>completed</div>
+    <div class="card failed"><div class="num">{{ stats.failed }}</div>failures</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Run</th><th>Issue</th><th>Status</th><th>Devin session</th><th>Session status</th><th>Pull requests</th><th>Error</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for run in runs %}
+      <tr>
+        <td>#{{ run.id }}</td>
+        <td><a href="{{ run.issue_url }}">{{ run.repo }}#{{ run.issue_number }}</a><br>{{ run.issue_title }}</td>
+        <td><span class="status {{ run.status }}">{{ run.status }}</span></td>
+        <td>{% if run.devin_session_url %}<a href="{{ run.devin_session_url }}">{{ run.devin_session_id }}</a>{% else %}&mdash;{% endif %}</td>
+        <td>{{ run.devin_session_status or "—" }}</td>
+        <td>
+          {% for pr in run.pull_requests %}
+            <a href="{{ pr.url }}">{{ pr.url.rsplit('/', 2)[-2:] | join('/') }}</a> ({{ pr.state or "?" }})<br>
+          {% else %}&mdash;{% endfor %}
+        </td>
+        <td class="error">{{ run.error or "" }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7">No runs yet. Label an issue in the target repo with the trigger label.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>
