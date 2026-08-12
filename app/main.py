@@ -77,7 +77,12 @@ async def github_webhook(
                 issue["issue_url"],
             ),
             title=f"Remediate {issue['repo']}#{issue['issue_number']}",
-            tags=["remediation-controller"],
+            tags=[
+                "remediation-controller",
+                f"issue-{issue['issue_number']}",
+            ],
+            repo=issue["repo"],
+            issue_url=issue["issue_url"],
         )
     except Exception as exc:  # noqa: BLE001
         logger.exception("failed to create Devin session")

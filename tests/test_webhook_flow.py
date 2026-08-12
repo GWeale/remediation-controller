@@ -76,6 +76,24 @@ def test_duplicate_label_event_does_not_create_second_run(client):
     assert len(client.get("/api/runs").json()) == 1
 
 
+def test_failed_run_is_retried_on_relabel(client):
+    client.app.state.devin.create_session = AsyncMock(side_effect=RuntimeError("api down"))
+    body = labeled_issue_payload(number=8)
+    assert post_webhook(client, body, signature=sign(body)).status_code == 502
+    assert client.get("/api/runs").json()[0]["status"] == "failed"
+
+    client.app.state.devin.create_session = AsyncMock(
+        return_value={"session_id": "devin-retry", "url": "https://app.devin.ai/x"}
+    )
+    resp = post_webhook(client, body, signature=sign(body))
+    assert resp.json()["status"] == "created"
+    runs = client.get("/api/runs").json()
+    assert len(runs) == 1
+    assert runs[0]["status"] == "session_created"
+    assert runs[0]["devin_session_id"] == "devin-retry"
+    assert runs[0]["error"] is None
+
+
 def test_failed_session_creation_marks_run_failed(client):
     client.app.state.devin.create_session = AsyncMock(side_effect=RuntimeError("api down"))
     body = labeled_issue_payload(number=9)

@@ -12,9 +12,13 @@ FAILURE_STATUSES = {"error"}
 
 
 class DevinClient:
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, transport: httpx.AsyncBaseTransport | None = None):
         self._settings = settings
         self._base = settings.devin_api_base.rstrip("/")
+        self._transport = transport
+
+    def _client(self) -> httpx.AsyncClient:
+        return httpx.AsyncClient(timeout=30, transport=self._transport)
 
     def _headers(self) -> dict[str, str]:
         return {
@@ -27,9 +31,9 @@ class DevinClient:
         return f"{self._base}/v3/organizations/{self._settings.devin_org_id}/sessions"
 
     async def create_session(
-        self, prompt: str, title: str, tags: list[str]
+        self, prompt: str, title: str, tags: list[str], repo: str, issue_url: str
     ) -> dict[str, Any]:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with self._client() as client:
             resp = await client.post(
                 self._sessions_url,
                 headers=self._headers(),
@@ -37,14 +41,19 @@ class DevinClient:
                     "prompt": prompt,
                     "title": title,
                     "tags": tags,
-                    "idempotent": True,
+                    "repos": [repo],
+                    "session_links": [issue_url],
+                    "max_acu_limit": 3,
+                    "bypass_approval": True,
+                    "structured_output_required": False,
+                    "resumable": True,
                 },
             )
             resp.raise_for_status()
             return resp.json()
 
     async def get_session(self, session_id: str) -> dict[str, Any]:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with self._client() as client:
             resp = await client.get(
                 f"{self._sessions_url}/{session_id}", headers=self._headers()
             )

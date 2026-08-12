@@ -43,7 +43,11 @@ def create_run(
     issue_url: str,
     label: str,
 ) -> Optional[int]:
-    """Insert a run; returns the new run id, or None if one already exists."""
+    """Insert a run; returns the run id, or None if an active/completed one exists.
+
+    A previously failed run for the same issue is reset and reused so that
+    re-labeling the issue retries it.
+    """
     now = time.time()
     try:
         cur = conn.execute(
@@ -55,6 +59,25 @@ def create_run(
         conn.commit()
         return cur.lastrowid
     except sqlite3.IntegrityError:
+        existing = conn.execute(
+            "SELECT id, status FROM runs WHERE repo = ? AND issue_number = ?",
+            (repo, issue_number),
+        ).fetchone()
+        if existing and existing["status"] == "failed":
+            update_run(
+                conn,
+                existing["id"],
+                status="pending",
+                error=None,
+                devin_session_id=None,
+                devin_session_url=None,
+                devin_session_status=None,
+                pull_requests="",
+                issue_title=issue_title,
+                issue_url=issue_url,
+                label=label,
+            )
+            return existing["id"]
         return None
 
 
