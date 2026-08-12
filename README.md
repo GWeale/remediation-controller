@@ -88,11 +88,11 @@ Covers signature verification (valid/invalid/tampered/missing), event
 filtering, run creation with a mocked Devin client, duplicate suppression,
 failure handling, dashboard rendering, and monitor status transitions.
 
-## Scope notes (take-home constraints)
+## Scope notes
 
-- Single-process SQLite + in-process poller: fine for a demo, would move to a
-  real queue/worker and Postgres for production.
+- Single-process SQLite + in-process poller: fine for a small deployment;
+  would move to a real queue/worker and Postgres at scale.
 - The controller trusts Devin to respect the no-merge/fork-only constraints in
-  the prompt; a production version would also use a GitHub token with
+  the prompt; a hardened version would also use a GitHub token with
   fork-scoped, non-merge permissions as a hard guarantee.
-- No auth on the dashboard (read-only demo).
+- No auth on the read-only dashboard.
