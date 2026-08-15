@@ -56,6 +56,66 @@ async def test_error_session_marks_failed(conn):
 
 
 @pytest.mark.asyncio
+async def test_suspended_with_pull_request_marks_completed(conn):
+    run_id = make_run(conn)
+    client = AsyncMock()
+    client.get_session.return_value = {
+        "status": "suspended",
+        "status_detail": "inactivity",
+        "pull_requests": [
+            {"pr_url": "https://github.com/GWeale/superset/pull/2", "pr_state": "open"}
+        ],
+    }
+    await poll_active_runs(conn, client)
+    run = db.get_run(conn, run_id)
+    assert run["status"] == "completed"
+    assert run["devin_session_status"] == "suspended"
+    assert run["error"] is None
+    assert json.loads(run["pull_requests"]) == [
+        {"url": "https://github.com/GWeale/superset/pull/2", "state": "open"}
+    ]
+
+
+@pytest.mark.asyncio
+async def test_suspended_without_pull_request_marks_failed_with_status_detail(conn):
+    run_id = make_run(conn)
+    client = AsyncMock()
+    client.get_session.return_value = {
+        "status": "suspended",
+        "status_detail": "usage_limit_exceeded",
+        "pull_requests": [],
+    }
+    await poll_active_runs(conn, client)
+    run = db.get_run(conn, run_id)
+    assert run["status"] == "failed"
+    assert run["error"] == "usage_limit_exceeded"
+
+
+@pytest.mark.asyncio
+async def test_suspended_without_status_detail_falls_back_to_suspended(conn):
+    run_id = make_run(conn)
+    client = AsyncMock()
+    client.get_session.return_value = {"status": "suspended", "pull_requests": []}
+    await poll_active_runs(conn, client)
+    assert db.get_run(conn, run_id)["error"] == "suspended"
+
+
+@pytest.mark.asyncio
+async def test_error_session_records_status_detail(conn):
+    run_id = make_run(conn)
+    client = AsyncMock()
+    client.get_session.return_value = {
+        "status": "error",
+        "status_detail": "error",
+        "pull_requests": [],
+    }
+    await poll_active_runs(conn, client)
+    run = db.get_run(conn, run_id)
+    assert run["status"] == "failed"
+    assert run["error"] == "error"
+
+
+@pytest.mark.asyncio
 async def test_poll_error_keeps_run_active(conn):
     run_id = make_run(conn)
     client = AsyncMock()

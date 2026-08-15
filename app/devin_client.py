@@ -6,8 +6,9 @@ import httpx
 
 from .config import Settings
 
-# Statuses reported by GET /v3/organizations/{org_id}/sessions/{devin_id}
-TERMINAL_STATUSES = {"exit", "error"}
+# Statuses reported by GET /v3/organizations/{org_id}/sessions/{devin_id}.
+# `suspended` is terminal too: Devin stops working and will not resume on its own.
+TERMINAL_STATUSES = {"exit", "error", "suspended"}
 FAILURE_STATUSES = {"error"}
 
 

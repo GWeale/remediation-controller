@@ -73,9 +73,12 @@ All configuration is via environment variables (see `.env.example`):
   prompt template.
 - `app/db.py` — SQLite schema and helpers. Run lifecycle:
   `pending → session_created → running → completed | failed`.
-- `app/monitor.py` — asyncio background loop polling active sessions;
-  maps Devin status `error → failed`, `exit → completed`, otherwise `running`,
-  and captures the session's pull requests.
+- `app/monitor.py` — asyncio background loop polling active sessions and
+  capturing their pull requests. Status mapping: `error → failed` (with
+  `status_detail` stored as the run error), `exit → completed`, `suspended`
+  (also terminal) → `completed` when the session produced at least one pull
+  request, otherwise `failed` with `status_detail` as the error; anything else
+  → `running`.
 - `app/main.py` — FastAPI wiring: webhook endpoint, JSON API, HTML dashboard.
 
 ## Tests
@@ -86,7 +89,9 @@ pytest
 
 Covers signature verification (valid/invalid/tampered/missing), event
 filtering, run creation with a mocked Devin client, duplicate suppression,
-failure handling, dashboard rendering, and monitor status transitions.
+failure handling, retry-on-relabel, the exact Devin v3 request path and body
+(via `httpx.MockTransport`), dashboard rendering, and monitor status
+transitions including suspended sessions with and without pull requests.
 
 ## Scope notes
 
